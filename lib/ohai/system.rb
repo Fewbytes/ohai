@@ -16,22 +16,13 @@
 # limitations under the License.
 #
 
-require 'extlib'
+require 'ohai/mash'
 require 'ohai/log'
 require 'ohai/mixin/from_file'
 require 'ohai/mixin/command'
 require 'ohai/mixin/string'
 
-begin
-  require 'json'
-rescue LoadError
-  begin
-    require 'json/pure'
-  rescue LoadError
-    STDERR.puts "No valid JSON library detected, please install one of 'json' or 'json_pure'."
-    exit -2
-  end
-end
+require 'yajl'
 
 module Ohai
   class System
@@ -72,7 +63,7 @@ module Ohai
     def from(cmd)
       status, stdout, stderr = run_command(:command => cmd)
       return "" if stdout.nil? || stdout.empty?
-      stdout.chomp!.strip
+      stdout.strip
     end
 
     def provides(*paths)
@@ -198,9 +189,9 @@ module Ohai
           Ohai::Log.debug("Loading plugin #{plugin_name}")
           from_file(check_path)
           return true
-        rescue IOError => e
+        rescue Errno::ENOENT => e
           Ohai::Log.debug("No #{plugin_name} at #{check_path}")
-        rescue SystemExit => e
+        rescue SystemExit, Interrupt
           raise
         rescue Exception,Errno::ENOENT => e
           Ohai::Log.debug("Plugin #{plugin_name} threw exception #{e.inspect} #{e.backtrace.join("\n")}")
@@ -213,40 +204,33 @@ module Ohai
     alias :_require_plugin :require_plugin
 
     # Serialize this object as a hash
-    def to_json(*a)
-      output = @data.clone
-      output["json_class"] = self.class.name
-      output.to_json(*a)
+    def to_json
+      Yajl::Encoder.new.encode(@data)
     end
 
     # Pretty Print this object as JSON
-    def json_pretty_print
-      JSON.pretty_generate(@data)
+    def json_pretty_print(item=nil)
+      Yajl::Encoder.new(:pretty => true).encode(item || @data)
     end
 
     def attributes_print(a)
-      raise ArgumentError, "I cannot find an attribute named #{a}!" unless @data.has_key?(a)
+      data = @data
+      a.split("/").each do |part|
+        data = data[part]
+      end
+      raise ArgumentError, "I cannot find an attribute named #{a}!" if data.nil?
       case a
       when Hash,Mash,Array
-        JSON.pretty_generate(@data[a])
+        json_pretty_print(data)
       when String
-        if @data[a].respond_to?(:lines)
-          JSON.pretty_generate(@data[a].lines.to_a)
+        if data.respond_to?(:lines)
+          json_pretty_print(data.lines.to_a)
         else
-          JSON.pretty_generate(@data[a].to_a)
+          json_pretty_print(data.to_a)
         end
       else
-        raise ArgumentError, "I can only generate JSON for Hashes, Mashes, Arrays and Strings. You fed me a #{@data[a].class}!"
+        raise ArgumentError, "I can only generate JSON for Hashes, Mashes, Arrays and Strings. You fed me a #{data.class}!"
       end
-    end
-
-    # Create an Ohai::System from JSON
-    def self.json_create(o)
-      ohai = new
-      o.each do |key, value|
-        ohai.data[key] = value unless key == "json_class"
-      end
-      ohai
     end
 
     def method_missing(name, *args)

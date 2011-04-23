@@ -1,8 +1,6 @@
 #
-# Author:: Benjamin Black (<nostromo@gmail.com>)
-# Author:: Daniel DeLeo <dan@kallistec.com>
+# Author:: Kurt Yoder (<ktyopscode@yoderhome.com>)
 # Copyright:: Copyright (c) 2008 Opscode, Inc.
-# Copyright:: Copyright (c) 2009 Daniel DeLeo
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,18 +15,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-require 'socket'
+require 'date'
+# It would be far better if we could include sys/uptime from sys-uptime RubyGem
+# It would also be good if we could pull idle time; how do we do this on Solaris?
 
-provides "hostname", "fqdn"
+provides "uptime", "uptime_seconds"
 
-hostname from("hostname")
-
-fqdn_lookup = Socket.getaddrinfo(hostname, nil, nil, nil, nil, Socket::AI_CANONNAME).first[2]
-
-if fqdn_lookup.split('.').length > 1
-  # we recieved an fqdn
-  fqdn fqdn_lookup
-else
-  # default to assembling one
-  fqdn(from("hostname") + "." + from("domainname"))
+# Example output:
+# $ who -b
+#   .       system boot  Jul  9 17:51
+popen4('who -b') do |pid, stdin, stdout, stderr|
+  stdin.close
+  stdout.each do |line|
+    if line =~ /.* boot (.+)/
+      uptime_seconds Time.now.to_i - DateTime.parse($1).strftime('%s').to_i
+		uptime self._seconds_to_human(uptime_seconds)
+		break
+    end
+  end
 end

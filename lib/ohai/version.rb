@@ -1,6 +1,6 @@
 #
-# Author:: Tollef Fog Heen <tfheen@err.no>
-# Copyright:: Copyright (c) 2010 Tollef Fog Heen
+# Author:: Adam Jacob (<adam@opscode.com>)
+# Copyright:: Copyright (c) 2008 Opscode, Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +16,8 @@
 # limitations under the License.
 #
 
-require 'chef/version'
-provides "chef"
+module Ohai
+  OHAI_ROOT = File.expand_path(File.dirname(__FILE__))
+  VERSION = '0.6.2'
+end
 
-self[:chef_packages] = Mash.new unless self[:chef_packages]
-self[:chef_packages][:chef] = Mash.new
-self[:chef_packages][:chef][:version] = Chef::VERSION
-self[:chef_packages][:chef][:chef_root] = Chef::CHEF_ROOT

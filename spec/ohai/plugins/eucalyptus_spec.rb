@@ -12,7 +12,7 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDIT"Net::HTTP Response"NS OF ANY KIND, either express or implied.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
@@ -20,21 +20,20 @@
 require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper.rb')
 require 'open-uri'
 
-describe Ohai::System, "plugin ec2" do
+describe Ohai::System, "plugin eucalyptus" do
   before(:each) do
     @ohai = Ohai::System.new
     @ohai.stub!(:require_plugin).and_return(true)
-    @ohai[:network] = {:interfaces => {:eth0 => {} } }
   end
 
-  shared_examples_for "!ec2" do
-    it "should NOT attempt to fetch the ec2 metadata" do
-      @ohai.should_not_receive(:http_client)
-      @ohai._require_plugin("ec2")
+  shared_examples_for "!eucalyptus" do
+    it "should NOT attempt to fetch the eucalyptus metadata" do
+      OpenURI.should_not_receive(:open)
+      @ohai._require_plugin("eucalyptus")
     end
   end
 
-  shared_examples_for "ec2" do
+  shared_examples_for "eucalyptus" do
     before(:each) do
       @http_client = mock("Net::HTTP client")
       @ohai.stub!(:http_client).and_return(@http_client)
@@ -56,33 +55,33 @@ describe Ohai::System, "plugin ec2" do
         and_return(mock("Net::HTTP Response", :body => "By the pricking of my thumb...", :code => "200"))
     end
 
-    it "should recursively fetch all the ec2 metadata" do
+    it "should recursively fetch all the eucalyptus metadata" do
       IO.stub!(:select).and_return([[],[1],[]])
       t = mock("connection")
       t.stub!(:connect_nonblock).and_raise(Errno::EINPROGRESS)
       Socket.stub!(:new).and_return(t)
-      @ohai._require_plugin("ec2")
-      @ohai[:ec2].should_not be_nil
-      @ohai[:ec2]['instance_type'].should == "c1.medium"
-      @ohai[:ec2]['ami_id'].should == "ami-5d2dc934"
-      @ohai[:ec2]['security_groups'].should eql ['group1', 'group2']
+      @ohai._require_plugin("eucalyptus")
+      @ohai[:eucalyptus].should_not be_nil
+      @ohai[:eucalyptus]['instance_type'].should == "c1.medium"
+      @ohai[:eucalyptus]['ami_id'].should == "ami-5d2dc934"
+      @ohai[:eucalyptus]['security_groups'].should eql ['group1', 'group2']
     end
   end
 
-  describe "with ec2 mac and metadata address connected" do
-    it_should_behave_like "ec2"
+  describe "with eucalyptus mac and metadata address connected" do
+    it_should_behave_like "eucalyptus"
 
     before(:each) do
       IO.stub!(:select).and_return([[],[1],[]])
-      @ohai[:network][:interfaces][:eth0][:arp] = {"169.254.1.0"=>"fe:ff:ff:ff:ff:ff"}
+      @ohai[:network] = { "interfaces" => { "eth0" => { "addresses" => { "d0:0d:95:47:6E:ED"=> { "family" => "lladdr" } } } } }
     end
   end
 
-  describe "without ec2 mac and metadata address connected" do
-    it_should_behave_like "!ec2"
+  describe "without eucalyptus mac and metadata address connected" do
+    it_should_behave_like "!eucalyptus"
 
     before(:each) do
-      @ohai[:network][:interfaces][:eth0][:arp] = {"169.254.1.0"=>"00:50:56:c0:00:08"}
+      @ohai[:network] = { "interfaces" => { "eth0" => { "addresses" => { "ff:ff:95:47:6E:ED"=> { "family" => "lladdr" } } } } }
     end
   end
 end

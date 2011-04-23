@@ -16,9 +16,7 @@
 # limitations under the License.
 #
 
+require 'ohai/version'
 require 'ohai/config'
 require 'ohai/system'
 
-module Ohai
-  VERSION = '0.5.8'
-end

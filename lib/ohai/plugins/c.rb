@@ -37,13 +37,16 @@ if status == 0
 end
 
 #glibc
-status, stdout, stderr = run_command(:no_status_check => true, :command => "/lib/libc.so.6")
-if status == 0
-  description = stdout.split($/).first
-  if description =~ /(\d+\.\d+\.\d+)/
-    c[:glibc] = Mash.new
-    c[:glibc][:version] = $1
-    c[:glibc][:description] = description
+["/lib/libc.so.6", "/lib64/libc.so.6"].each do |glibc|
+  status, stdout, stderr = run_command(:no_status_check => true, :command => glibc)
+  if status == 0
+    description = stdout.split($/).first
+    if description =~ /(\d+\.\d+\.?\d*)/
+      c[:glibc] = Mash.new
+      c[:glibc][:version] = $1
+      c[:glibc][:description] = description
+    end
+    break
   end
 end
 
@@ -72,12 +75,12 @@ end
 
 #ibm xlc
 status, stdout, stderr = run_command(:no_status_check => true, :command => "xlc -qversion")
-if status == 0
-  lines = stdout.split($/)
-  if lines.size >= 2
+if status == 0 or (status >> 8) == 249
+  description = stdout.split($/).first
+  if description =~ /V(\d+\.\d+)/
     c[:xlc] = Mash.new
-    c[:xlc][:version] = lines[1].split.last
-    c[:xlc][:description] = lines[0]
+    c[:xlc][:version] = $1
+    c[:xlc][:description] = description.strip
   end
 end
 
@@ -85,7 +88,7 @@ end
 status, stdout, stderr = run_command(:no_status_check => true, :command => "cc -V -flags")
 if status == 0
   output = stderr.split
-  if output.size >= 4
+  if stderr =~ /^cc: Sun C/ && output.size >= 4
     c[:sunpro] = Mash.new
     c[:sunpro][:version] = output[3]
     c[:sunpro][:description] = stderr.chomp
