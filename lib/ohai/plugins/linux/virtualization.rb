@@ -22,19 +22,27 @@ virtualization Mash.new
 
 # if it is possible to detect paravirt vs hardware virt, it should be put in
 # virtualization[:mechanism]
-if File.exists?("/proc/xen/capabilities") && File.read("/proc/xen/capabilities") =~ /control_d/i
-    virtualization[:system] = "xen"
-    virtualization[:role] = "host"
-elsif File.exists?("/proc/sys/xen/independent_wallclock")
+if File.exists?("/proc/xen/capabilities")
   virtualization[:system] = "xen"
-  virtualization[:role] = "guest"
+  if File.read("/proc/xen/capabilities") =~ /control_d/i
+    virtualization[:role] = "host"
+  else
+    virtualization[:role] = "guest"
+  end
 end
 
-# Detect KVM hosts by kernel module
+# Detect from kernel module
 if File.exists?("/proc/modules")
-  if File.read("/proc/modules") =~ /^kvm/
+  modules = File.read("/proc/modules")
+  if modules =~ /^kvm/
     virtualization[:system] = "kvm"
     virtualization[:role] = "host"
+  elsif modules =~ /^vboxdrv/
+    virtualization[:system] = "vbox"
+    virtualization[:role] = "host"
+  elsif modules =~ /^vboxguest/
+    virtualization[:system] = "vbox"
+    virtualization[:role] = "guest"
   end
 end
 
@@ -68,19 +76,19 @@ if File.exists?("/usr/sbin/dmidecode")
     dmi_info = stdout.read
     case dmi_info
     when /Manufacturer: Microsoft/
-      if dmi_info =~ /Product Name: Virtual Machine/ 
+      if dmi_info =~ /Product Name: Virtual Machine/
         virtualization[:system] = "virtualpc"
         virtualization[:role] = "guest"
-      end 
+      end
     when /Manufacturer: VMware/
-      if dmi_info =~ /Product Name: VMware Virtual Platform/ 
+      if dmi_info =~ /Product Name: VMware Virtual Platform/
         virtualization[:system] = "vmware"
         virtualization[:role] = "guest"
       end
     when /Manufacturer: Xen/
       if dmi_info =~ /Product Name: HVM domU/
         virtualization[:system] = "xen"
-        virtualization[:role] = "guest"  
+        virtualization[:role] = "guest"
       end
     else
       nil
