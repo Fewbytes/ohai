@@ -22,14 +22,28 @@ virtualization Mash.new
 
 # if it is possible to detect paravirt vs hardware virt, it should be put in
 # virtualization[:mechanism]
-if File.exists?("/proc/xen/capabilities")
+
+## Xen
+# /proc/xen is an empty dir for EL6 + Linode Guests
+if File.exists?("/proc/xen")
   virtualization[:system] = "xen"
-  if File.read("/proc/xen/capabilities") =~ /control_d/i
-    virtualization[:role] = "host"
-  else
-    virtualization[:role] = "guest"
+  # Assume guest
+  virtualization[:role] = "guest"
+
+  # This file should exist on most Xen systems, normally empty for guests
+  if File.exists?("/proc/xen/capabilities")
+    if File.read("/proc/xen/capabilities") =~ /control_d/i
+      virtualization[:role] = "host"
+    end
   end
 end
+
+# Xen Notes:
+# - cpuid of guests, if we could get it, would also be a clue
+# - may be able to determine if under paravirt from /dev/xen/evtchn (See OHAI-253)
+# - EL6 guests carry a 'hypervisor' cpu flag
+# - Additional edge cases likely should not change the above assumptions
+#   but rather be additive - btm
 
 # Detect from kernel module
 if File.exists?("/proc/modules")
@@ -58,15 +72,14 @@ if File.exists?("/proc/cpuinfo")
   end
 end
 
-# http://wiki.openvz.org/Proc/user_beancounters
-if File.exists?("/proc/user_beancounters")
-  if File.read("/proc/user_beancounters") =~ /\n\s+0:\s+/
-    virtualization[:emulator] = "openvz"
-    virtualization[:role] = "host"
-  else
-    virtualization[:emulator] = "openvz"
-    virtualization[:role] = "guest"
-  end
+# Detect OpenVZ / Virtuozzo.
+# http://wiki.openvz.org/BC_proc_entries
+if File.exists?("/proc/bc/0")
+  virtualization[:system] = "openvz"
+  virtualization[:role] = "host"
+elsif File.exists?("/proc/vz")
+  virtualization[:system] = "openvz"
+  virtualization[:role] = "guest"
 end
 
 # http://www.dmo.ca/blog/detecting-virtualization-on-linux
@@ -110,6 +123,3 @@ if File.exists?("/proc/self/status")
      end
   end
 end
-
-# Detect OpenVZ
-# something in /proc/vz/veinfo
