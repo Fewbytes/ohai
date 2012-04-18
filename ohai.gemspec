@@ -13,7 +13,11 @@ spec = Gem::Specification.new do |s|
   s.email = "adam@opscode.com"
   s.homepage = "http://wiki.opscode.com/display/ohai"
 
-  s.add_dependency "yajl-ruby"
+  if RUBY_PLATFORM == "java"
+    s.add_dependency "json-jruby"
+  else
+    s.add_dependency "yajl-ruby"
+  end
   s.add_dependency "systemu"
   s.add_dependency "mixlib-cli"
   s.add_dependency "mixlib-config"
