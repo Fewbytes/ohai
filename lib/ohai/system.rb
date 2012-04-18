@@ -22,7 +22,7 @@ require 'ohai/mixin/from_file'
 require 'ohai/mixin/command'
 require 'ohai/mixin/string'
 
-require 'yajl'
+require 'ohai/json'
 
 module Ohai
   class System
@@ -30,6 +30,7 @@ module Ohai
 
     include Ohai::Mixin::FromFile
     include Ohai::Mixin::Command
+    include Ohai::JSONCompat
 
     def initialize
       @data = Mash.new
@@ -204,14 +205,6 @@ module Ohai
     alias :_require_plugin :require_plugin
 
     # Serialize this object as a hash
-    def to_json
-      Yajl::Encoder.new.encode(@data)
-    end
-
-    # Pretty Print this object as JSON
-    def json_pretty_print(item=nil)
-      Yajl::Encoder.new(:pretty => true).encode(item || @data)
-    end
 
     def attributes_print(a)
       data = @data
