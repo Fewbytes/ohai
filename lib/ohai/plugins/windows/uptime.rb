@@ -1,6 +1,6 @@
 #
-# Author:: Adam Jacob (<adam@opscode.com>)
-# Copyright:: Copyright (c) 2008 Opscode, Inc.
+# Author:: Paul Mooring (paul@opscode.com)
+# Copyright:: Copyright (c) 2012 Opscode, Inc.
 # License:: Apache License, Version 2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,24 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+require 'ruby-wmi'
 
-provides "platform", "platform_version", "platform_build", "platform_family"
+provides "uptime", "uptime_seconds"
 
-popen4("/usr/bin/sw_vers") do |pid, stdin, stdout, stderr|
-  stdin.close
-  stdout.each do |line|
-    case line
-    when /^ProductName:\s+(.+)$/
-      macname = $1
-      macname.downcase!
-      macname.gsub!(" ", "_")
-      platform macname
-    when /^ProductVersion:\s+(.+)$/
-      platform_version $1
-    when /^BuildVersion:\s+(.+)$/
-      platform_build $1
-    end
-  end
-end
-
-platform_family "mac_os_x"
+uptime_seconds ::WMI::Win32_PerfFormattedData_PerfOS_System.find(:first).SystemUpTime.to_i
+uptime self._seconds_to_human(uptime_seconds)

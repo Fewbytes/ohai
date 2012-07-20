@@ -52,7 +52,6 @@ describe Ohai::System, "Linux plugin platform" do
     it "should set platform to lowercased lsb[:id]" do
       @ohai._require_plugin("linux::platform")        
       @ohai[:platform].should == "ubuntu"
-      
     end
     
     it "should set platform_version to lsb[:release]" do
@@ -66,10 +65,10 @@ describe Ohai::System, "Linux plugin platform" do
       @ohai[:platform].should == "ubuntu"
       @ohai[:platform_family].should == "debian"
     end
-    it "should set platform to mint and platform_family to debian [:lsb][:id] contains Mint" do
-      @ohai[:lsb][:id] = "Mint"
+    it "should set platform to linuxmint and platform_family to debian [:lsb][:id] contains LinuxMint" do
+      @ohai[:lsb][:id] = "LinuxMint"
       @ohai._require_plugin("linux::platform")
-      @ohai[:platform].should == "mint"
+      @ohai[:platform].should == "linuxmint"
       @ohai[:platform_family].should == "debian"
     end
     it "should set platform to debian and platform_family to debian [:lsb][:id] contains Debian" do
@@ -124,6 +123,13 @@ describe Ohai::System, "Linux plugin platform" do
       @ohai[:platform_version].should == "5.0"
     end
 
+    # Ubuntu has /etc/debian_version as well
+    it "should detect Ubuntu as itself rather than debian" do
+      @ohai[:lsb][:id] = "Ubuntu"
+      @ohai[:lsb][:release] = "8.04"
+      @ohai._require_plugin("linux::platform")
+      @ohai[:platform].should == "ubuntu"
+    end
   end
 
   describe "on slackware" do
@@ -354,59 +360,79 @@ describe Ohai::System, "Linux plugin platform" do
 
   describe "on suse" do
     before(:each) do
-      @ohai.lsb = nil
       File.should_receive(:exists?).with("/etc/SuSE-release").and_return(true)
     end
-  
-    it "should check for the existance of SuSE-release" do
-      @ohai._require_plugin("linux::platform")
+
+    describe "with lsb_release results" do
+      before(:each) do
+        @ohai[:lsb][:id] = "SUSE LINUX"
+      end
+      
+      it "should read the platform as suse" do
+        @ohai[:lsb][:release] = "12.1"
+        File.should_receive(:read).with("/etc/SuSE-release").exactly(2).times.and_return("openSUSE 12.1 (x86_64)\nVERSION = 12.1\nCODENAME = Asparagus\n")
+        @ohai._require_plugin("linux::platform")
+        @ohai[:platform].should == "suse"
+        @ohai[:platform_version].should == "12.1"
+        @ohai[:platform_family].should == "suse"
+      end
     end
-  
-    it "should set platform and platform_family to suse and bogus verion to 10.0" do
-      File.should_receive(:read).with("/etc/SuSE-release").at_least(:once).and_return("VERSION = 10.0")
-      @ohai._require_plugin("linux::platform")
-      @ohai[:platform].should == "suse"
-      @ohai[:platform_family].should == "suse"
-    end
-  
-    it "should read the version as 10.1 for bogus SLES 10" do
-      File.should_receive(:read).with("/etc/SuSE-release").and_return("SUSE Linux Enterprise Server 10 (i586)\nVERSION = 10\nPATCHLEVEL = 1\n")
-      @ohai._require_plugin("linux::platform")
-      @ohai[:platform].should == "suse"
-      @ohai[:platform_version].should == "10.1"
-      @ohai[:platform_family].should == "suse"
-    end
-  
-    it "should read the version as 11.2" do
-      File.should_receive(:read).with("/etc/SuSE-release").and_return("SUSE Linux Enterprise Server 11.2 (i586)\nVERSION = 11\nPATCHLEVEL = 2\n")
-      @ohai._require_plugin("linux::platform")
-      @ohai[:platform].should == "suse"
-      @ohai[:platform_version].should == "11.2"
-      @ohai[:platform_family].should == "suse"
-    end
-    
-    it "[OHAI-272] should read the version as 11.3" do
-      File.should_receive(:read).with("/etc/SuSE-release").exactly(2).times.and_return("openSUSE 11.3 (x86_64)\nVERSION = 11.3")
-      @ohai._require_plugin("linux::platform")
-      @ohai[:platform].should == "suse"
-      @ohai[:platform_version].should == "11.3"
-      @ohai[:platform_family].should == "suse"
-    end
-    
-    it "[OHAI-272] should read the version as 9.1" do
-      File.should_receive(:read).with("/etc/SuSE-release").exactly(2).times.and_return("SuSE Linux 9.1 (i586)\nVERSION = 9.1")
-      @ohai._require_plugin("linux::platform")
-      @ohai[:platform].should == "suse"
-      @ohai[:platform_version].should == "9.1"
-      @ohai[:platform_family].should == "suse"
-    end
-    
-    it "[OHAI-272] should read the version as 11.4" do
-      File.should_receive(:read).with("/etc/SuSE-release").exactly(2).times.and_return("openSUSE 11.4 (i586)\nVERSION = 11.4\nCODENAME = Celadon")
-      @ohai._require_plugin("linux::platform")
-      @ohai[:platform].should == "suse"
-      @ohai[:platform_version].should == "11.4"
-      @ohai[:platform_family].should == "suse"
+
+    describe "without lsb_release results" do
+      before(:each) do
+        @ohai.lsb = nil
+      end
+      
+      it "should check for the existance of SuSE-release" do
+        @ohai._require_plugin("linux::platform")
+      end
+      
+      it "should set platform and platform_family to suse and bogus verion to 10.0" do
+        File.should_receive(:read).with("/etc/SuSE-release").at_least(:once).and_return("VERSION = 10.0")
+        @ohai._require_plugin("linux::platform")
+        @ohai[:platform].should == "suse"
+        @ohai[:platform_family].should == "suse"
+      end
+      
+      it "should read the version as 10.1 for bogus SLES 10" do
+        File.should_receive(:read).with("/etc/SuSE-release").and_return("SUSE Linux Enterprise Server 10 (i586)\nVERSION = 10\nPATCHLEVEL = 1\n")
+        @ohai._require_plugin("linux::platform")
+        @ohai[:platform].should == "suse"
+        @ohai[:platform_version].should == "10.1"
+        @ohai[:platform_family].should == "suse"
+      end
+      
+      it "should read the version as 11.2" do
+        File.should_receive(:read).with("/etc/SuSE-release").and_return("SUSE Linux Enterprise Server 11.2 (i586)\nVERSION = 11\nPATCHLEVEL = 2\n")
+        @ohai._require_plugin("linux::platform")
+        @ohai[:platform].should == "suse"
+        @ohai[:platform_version].should == "11.2"
+        @ohai[:platform_family].should == "suse"
+      end
+      
+      it "[OHAI-272] should read the version as 11.3" do
+        File.should_receive(:read).with("/etc/SuSE-release").exactly(2).times.and_return("openSUSE 11.3 (x86_64)\nVERSION = 11.3")
+        @ohai._require_plugin("linux::platform")
+        @ohai[:platform].should == "suse"
+        @ohai[:platform_version].should == "11.3"
+        @ohai[:platform_family].should == "suse"
+      end
+      
+      it "[OHAI-272] should read the version as 9.1" do
+        File.should_receive(:read).with("/etc/SuSE-release").exactly(2).times.and_return("SuSE Linux 9.1 (i586)\nVERSION = 9.1")
+        @ohai._require_plugin("linux::platform")
+        @ohai[:platform].should == "suse"
+        @ohai[:platform_version].should == "9.1"
+        @ohai[:platform_family].should == "suse"
+      end
+      
+      it "[OHAI-272] should read the version as 11.4" do
+        File.should_receive(:read).with("/etc/SuSE-release").exactly(2).times.and_return("openSUSE 11.4 (i586)\nVERSION = 11.4\nCODENAME = Celadon")
+        @ohai._require_plugin("linux::platform")
+        @ohai[:platform].should == "suse"
+        @ohai[:platform_version].should == "11.4"
+        @ohai[:platform_family].should == "suse"
+      end
     end
   end
 
