@@ -19,6 +19,8 @@ provides "cloud"
 require_plugin "ec2"
 require_plugin "rackspace"
 require_plugin "eucalyptus"
+require_plugin "linode"
+require_plugin "openstack"
 
 # Make top-level cloud hashes
 #
@@ -42,7 +44,7 @@ def on_ec2?
 end
 
 # Fill cloud hash with ec2 values
-def get_ec2_values 
+def get_ec2_values
   cloud[:public_ips] << ec2['public_ipv4']
   cloud[:private_ips] << ec2['local_ipv4']
   cloud[:public_ipv4] = ec2['public_ipv4']
@@ -52,7 +54,7 @@ def get_ec2_values
   cloud[:provider] = "ec2"
 end
 
-# setup ec2 cloud  
+# setup ec2 cloud
 if on_ec2?
   create_objects
   get_ec2_values
@@ -73,19 +75,51 @@ end
 
 # Fill cloud hash with rackspace values
 def get_rackspace_values 
-  cloud[:public_ips] << rackspace['public_ip']
-  cloud[:private_ips] << rackspace['private_ip']
+  cloud[:public_ips] << rackspace['public_ipv4'] if rackspace['public_ipv4']
+  cloud[:private_ips] << rackspace['local_ipv4'] if rackspace['local_ipv4']
   cloud[:public_ipv4] = rackspace['public_ipv4']
+  cloud[:public_ipv6] = rackspace['public_ipv6']
   cloud[:public_hostname] = rackspace['public_hostname']
   cloud[:local_ipv4] = rackspace['local_ipv4']
+  cloud[:local_ipv6] = rackspace['local_ipv6']
   cloud[:local_hostname] = rackspace['local_hostname']
   cloud[:provider] = "rackspace"
 end
 
-# setup rackspace cloud 
+# setup rackspace cloud
 if on_rackspace?
   create_objects
   get_rackspace_values
+end
+
+# ----------------------------------------
+# linode
+# ----------------------------------------
+
+# Is current cloud linode?
+#
+# === Return
+# true:: If linode Hash is defined
+# false:: Otherwise
+def on_linode?
+  linode != nil
+end
+
+# Fill cloud hash with linode values
+def get_linode_values
+  cloud[:public_ips] << linode['public_ip']
+  cloud[:private_ips] << linode['private_ip']
+  cloud[:public_ipv4] = linode['public_ipv4']
+  cloud[:public_hostname] = linode['public_hostname']
+  cloud[:local_ipv4] = linode['local_ipv4']
+  cloud[:local_hostname] = linode['local_hostname']
+  cloud[:provider] = "linode"
+end
+
+# setup linode cloud data
+if on_linode?
+  create_objects
+  get_linode_values
 end
 
 # ----------------------------------------
@@ -114,4 +148,34 @@ end
 if on_eucalyptus?
   create_objects
   get_eucalyptus_values
+end
+
+# ----------------------------------------
+# openstack
+# ----------------------------------------
+
+# Is current cloud openstack-based?
+#
+# === Return
+# true:: If openstack Hash is defined
+# false:: Otherwise
+def on_openstack?
+  openstack != nil
+end
+
+# Fill cloud hash with openstack values
+def get_openstack_values
+  cloud[:public_ips] << openstack['public_ipv4']
+  cloud[:private_ips] << openstack['local_ipv4']
+  cloud[:public_ipv4] = openstack['public_ipv4']
+  cloud[:public_hostname] = openstack['public_hostname']
+  cloud[:local_ipv4] = openstack['local_ipv4']
+  cloud[:local_hostname] = openstack['local_hostname']
+  cloud[:provider] = openstack['provider']
+end
+
+# setup openstack cloud
+if on_openstack?
+  create_objects
+  get_openstack_values
 end
